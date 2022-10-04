@@ -3,20 +3,20 @@ package Friend;
 import java.util.Scanner;
 
 public class MyFriendInfoBook {
-	final static int FRIEND_NUM = 10;   //½ºÅÂÆ½Àº ¿Ö ºÙÀÌ´Â Áö?
+	final static int FRIEND_NUM = 10;
 	public static void main(String[] args) {
 		
 		FriendInfoHandler handler= new FriendInfoHandler(FRIEND_NUM);
 		while(true) {
-			System.out.println("*** ¸Ş´º ¼±ÅÃ ***");
-			System.out.println("1. °í±³ Ä£±¸ ÀúÀå");
-			System.out.println("2. ´ëÇĞ Ä£±¸ ÀúÀå");
-			System.out.println("3. ÀüÃ¼ Á¤º¸ Ãâ·Â");
-			System.out.println("4. ±âº» Á¤º¸ Ãâ·Â");
-			System.out.println("5. ÇÁ·Î±×·¥ Á¾·á");
-			System.out.print("¼±ÅÃ>> ");
+			System.out.println("*** ë©”ë‰´ ì„ íƒ ***");
+			System.out.println("1. ê³ êµ ì¹œêµ¬ ì €ì¥");
+			System.out.println("2. ëŒ€í•™ ì¹œêµ¬ ì €ì¥");
+			System.out.println("3. ì „ì²´ ì •ë³´ ì¶œë ¥");
+			System.out.println("4. ê¸°ë³¸ ì •ë³´ ì¶œë ¥");
+			System.out.println("5. í”„ë¡œê·¸ë¨ ì¢…ë£Œ");
+			System.out.print("ì„ íƒ>> ");
 			Scanner sc = new Scanner(System.in);
-			int choice = sc.nextInt();   //º¸Åë Scanner´Â ¾È ´İ´ÂÁö?
+			int choice = sc.nextInt();
 			
 			switch(choice) {
 				case 1:
@@ -30,7 +30,7 @@ public class MyFriendInfoBook {
 					handler.showAllSimpleData();
 					break;
 				case 5:
-					System.out.println("ÇÁ·Î±×·¥À» Á¾·áÇÕ´Ï´Ù.");
+					System.out.println("í”„ë¡œê·¸ë¨ì„ ì¢…ë£Œí•©ë‹ˆë‹¤.");
 					return;
 			}
 		}
@@ -53,15 +53,15 @@ class HighFriend{
 	}
 	
 	public void showData() {
-		System.out.println("ÀÌ¸§ : " + name);
-		System.out.println("ÀüÈ­ : " + phoneNum);
-		System.out.println("ÁÖ¼Ò : " + addr);
-		System.out.println("Á÷¾÷ : " + work);
+		System.out.println("ì´ë¦„ : " + name);
+		System.out.println("ì „í™” : " + phoneNum);
+		System.out.println("ì£¼ì†Œ : " + addr);
+		System.out.println("ì§ì—… : " + work);
 	}
 	
 	public void showBasicInfo() {
-		System.out.println("ÀÌ¸§ : " + name);
-		System.out.println("ÀüÈ­ : "+ phoneNum);
+		System.out.println("ì´ë¦„ : " + name);
+		System.out.println("ì „í™” : "+ phoneNum);
 	}
 }
 
@@ -77,16 +77,16 @@ class UnivFriend {
 		this.major = major;
 	}
 	public void showData() {
-		System.out.println("ÀÌ¸§ : " + name);
-		System.out.println("ÀüÈ­ : " + phoneNum);
-		System.out.println("ÁÖ¼Ò : " + addr);
-		System.out.println("Àü°ø : " + major);
+		System.out.println("ì´ë¦„ : " + name);
+		System.out.println("ì „í™” : " + phoneNum);
+		System.out.println("ì£¼ì†Œ : " + addr);
+		System.out.println("ì „ê³µ : " + major);
 	}
 	
 	public void showBasicInfo() {
-		System.out.println("ÀÌ¸§ : " + name);
-		System.out.println("ÀüÈ­ : " + phoneNum);
-		System.out.println("Àü°ø : " + major);
+		System.out.println("ì´ë¦„ : " + name);
+		System.out.println("ì „í™” : " + phoneNum);
+		System.out.println("ì „ê³µ : " + major);
 	}
 }
 
@@ -113,24 +113,24 @@ class FriendInfoHandler{
 	public void addFriend(int choice) {
 		String name, phoneNum, addr;
 		Scanner sc = new Scanner(System.in);
-		System.out.print("ÀÌ¸§ : ");
+		System.out.print("ì´ë¦„ : ");
 		name = sc.nextLine();
-		System.out.print("ÀüÈ­ : ");
+		System.out.print("ì „í™” : ");
 		phoneNum = sc.nextLine();
-		System.out.print("ÁÖ¼Ò : ");
+		System.out.print("ì£¼ì†Œ : ");
 		addr = sc.nextLine();
 		if (choice == 1) {
 			String job;
-			System.out.print("Á÷¾÷ : ");
+			System.out.print("ì§ì—… : ");
 			job = sc.nextLine();
 			addFriendInfo(new HighFriend(name, phoneNum, addr, job));
 		} else {
 			String major;
-			System.out.print("ÇĞ°ú : ");
+			System.out.print("í•™ê³¼ : ");
 			major = sc.nextLine();
 			addFriendInfo(new UnivFriend(name, phoneNum, addr, major));
 		}
-		System.out.println("ÀÔ·Â ¿Ï·á! \n");
+		System.out.println("ì…ë ¥ ì™„ë£Œ! \n");
 	}
 	
 	public void showAllData() {
