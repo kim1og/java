@@ -5,13 +5,56 @@ import java.util.Scanner;
 interface INIT_MENU
 {
     int INPUT=1, SEARCH=2, DELETE=3, EXIT=4;
+    int CHOICES_COUNT = 4;
 }
  
 interface INPUT_SELECT
 {
     int NORMAL=1, UNIV=2, COMPANY=3;
+    int CHOICES_COUNT = 3;
 }
- 
+
+class Test
+{   
+    public static void main(String[] args)
+    {
+        PhoneBookManager manager=PhoneBookManager.createManagerInst();
+        int choice;
+        
+        while(true)
+        {
+            MenuViewer.showMenu();
+            
+            try {
+            	choice=MenuViewer.getChoiceMenu(INIT_MENU.CHOICES_COUNT);
+	            switch(choice)
+	            {
+	            case INIT_MENU.INPUT:
+	                manager.inputData();
+	                break;
+	            case INIT_MENU.SEARCH:
+	                manager.searchData();
+	                break;
+	            case INIT_MENU.DELETE:
+	                manager.deleteData();
+	                break;              
+	            case INIT_MENU.EXIT:
+	                System.out.println("프로그램을 종료합니다.");
+	                return;
+	            }
+            }
+            catch(ChoiceInputException e) {
+            	System.out.println(e.getMessage());
+            	System.out.println();
+            	continue;
+            }
+            
+        }
+        
+        
+    }
+}
+
 class PhoneInfo
 {
     String name;
@@ -120,28 +163,41 @@ class PhoneBookManager
     
     public void inputData()
     {
-        System.out.println("데이터 입력을 시작합니다..");
-        System.out.println("1. 일반, 2. 대학, 3. 회사");
-        System.out.print("선택>> ");
-        int choice=MenuViewer.keyboard.nextInt();
-        MenuViewer.keyboard.nextLine();
-        PhoneInfo info=null;
-        
-        switch(choice)
-        {
-        case INPUT_SELECT.NORMAL:
-            info=readFriendInfo();
-            break;
-        case INPUT_SELECT.UNIV:
-            info=readUnivFriendInfo();
-            break;
-        case INPUT_SELECT.COMPANY:
-            info=readCompanyFriendInfo();
-            break;
-        }
-        
-        infoStorage[curCnt++]=info;
-        System.out.println("데이터 입력이 완료되었습니다. \n");        
+    	while(true) {
+	        System.out.println("데이터 입력을 시작합니다..");
+	        System.out.println("1. 일반, 2. 대학, 3. 회사");
+	        System.out.print("선택>> ");
+	        
+	        try {
+		        int choice=MenuViewer.getChoiceMenu(INPUT_SELECT.CHOICES_COUNT);
+		        PhoneInfo info=null;
+		        	
+		        switch(choice)
+		        {
+		        case INPUT_SELECT.NORMAL:
+		            info=readFriendInfo();
+		            break;
+		        case INPUT_SELECT.UNIV:
+		            info=readUnivFriendInfo();
+		            break;
+		        case INPUT_SELECT.COMPANY:
+		            info=readCompanyFriendInfo();
+		            break;
+		        }
+		        
+		        infoStorage[curCnt++]=info;
+		        System.out.println("데이터 입력이 완료되었습니다. \n"); 
+		        return;
+	        }
+	        
+	        catch(ChoiceInputException e) {
+	        	System.out.println(e.getMessage());
+	        	System.out.println();
+	        	continue;
+	        }
+	        
+    	}
+    	
     }
     
     public void searchData()
@@ -212,36 +268,21 @@ class MenuViewer
         System.out.println("4. 프로그램 종료");
         System.out.print("선택: ");
     }
+    
+    public static int getChoiceMenu(int choicesCount) throws ChoiceInputException {
+    	int choice = keyboard.nextInt();
+    	keyboard.nextLine();
+    	
+    	if (choice < 1 || choice > choicesCount) {
+    		throw new ChoiceInputException();
+    	}
+    	
+    	return choice;
+    }
 }
  
-class Test
-{   
-    public static void main(String[] args)
-    {
-        PhoneBookManager manager=PhoneBookManager.createManagerInst();
-        int choice;
-        
-        while(true)
-        {
-            MenuViewer.showMenu();
-            choice=MenuViewer.keyboard.nextInt();
-            MenuViewer.keyboard.nextLine(); 
-            
-            switch(choice)
-            {
-            case INIT_MENU.INPUT:
-                manager.inputData();
-                break;
-            case INIT_MENU.SEARCH:
-                manager.searchData();
-                break;
-            case INIT_MENU.DELETE:
-                manager.deleteData();
-                break;              
-            case INIT_MENU.EXIT:
-                System.out.println("프로그램을 종료합니다.");
-                return;
-            }
-        }
-    }
+class ChoiceInputException extends Exception{
+	public ChoiceInputException() {
+		super("잘못된 입력입니다.");
+	}
 }
