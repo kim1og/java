@@ -1,10 +1,20 @@
 package SpaceInvader;
 import java.awt.event.KeyEvent;
+import java.util.ArrayList;
+import java.util.Set;
+import java.util.TreeSet;
 import java.awt.Color;
 import java.awt.Font;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
+
+import javax.swing.AbstractAction;
+import javax.swing.Action;
 import javax.swing.JFrame;
+import javax.swing.JPanel;
 import javax.swing.JTextArea;
+import javax.swing.KeyStroke;
 
 interface MAP_POSITION_INFO{
 	int GAME_SPACE_LEFT = 2,
@@ -24,46 +34,87 @@ interface MAP_POSITION_INFO{
 }
 
 public class MainGame {
+	private final int PLAYER_START_X = MAP_POSITION_INFO.GAME_SPACE_RIGHT/2;
+	private final int PLAYER_START_Y = MAP_POSITION_INFO.MAX_MAP_Y - 5;
+	
+	private MapManager mapManager = MapManager.createManager();
+	private ScreenFrame screenFrame = new ScreenFrame();
+	private EnemyHandler enemyHandler = EnemyHandler.createEnemyHandler();
+	private PlayerObject playerObj = new PlayerObject(PLAYER_START_X, PLAYER_START_Y);
+	private static boolean isGameOver = false;
+	
 	public static void main(String[] args) {
-		MapManager mapManager = MapManager.createManager();
-		ScreenFrame screenFrame = new ScreenFrame();
+		new MainGame();
+		// 적 총알 발사
+		// 재시작을 어떻게 할까..
+	}
+	
+	public MainGame() {
+		new Thread(new GameThread()).start();
+		screenFrame.addKeyListener(new PlayerKeyListener(playerObj, mapManager));
 		
-		final int PLAYER_START_X = MAP_POSITION_INFO.GAME_SPACE_RIGHT/2;
-		final int PLAYER_START_Y = MAP_POSITION_INFO.MAX_MAP_Y - 5;
+	}
+	
+	public void resetGame() {
+		isGameOver = false;
+		playerObj.setPosX(PLAYER_START_X);
+		playerObj.setPosY(PLAYER_START_Y);
+		
+		mapManager.insertObj(playerObj,playerObj.getImage());
+		mapManager.resetScore();
+	}
+	
+	public void createEnemies() {
 		int enemyNum = 8;
 		int enemyX = 10;
 		int enemyY = 2;
-		
-		PlayerObject playerObj = new PlayerObject(PLAYER_START_X, PLAYER_START_Y);
-		//new PlayerKeyListener(playerObj);
-		EnemyObject[] enemies = new EnemyObject[enemyNum]; 
-		
 		for(int i = 0; i < enemyNum; i++) {
-			enemies[i] = new EnemyObject(enemyX,enemyY);
+			enemyHandler.addEnemy(new EnemyObject(enemyX,enemyY));
 			enemyX += 10;
 			if(enemyX > 45) {
 				enemyX = 15;
 				enemyY = 4;
 			}
-			mapManager.insertObj(enemies[i],enemies[i].ENEMY_IMAGE);
+		}
+	}
+	
+	public void restart() {
+		new Thread(new GameThread()).start();
+	}
+	
+	public static void setGameOver() {
+		isGameOver = true;
+	}
+	
+	public static boolean getGameOver() {
+		return isGameOver;
+	}
+	
+	class GameThread implements Runnable {
+
+		@Override
+		public void run() {
+			mapManager.clearMap();
+			resetGame();
+			createEnemies();
+			enemyHandler.moveAllEnemies();
+			while(!isGameOver) {
+				screenFrame.printAllMap(mapManager);
+			}
+			new Thread(new GameThread()).start();
+			
 		}
 		
-		mapManager.insertObj(playerObj,playerObj.PLAYER_IMAGE);
-		
-		screenFrame.printAllMap(mapManager);
-		screenFrame.addKeyListener(new PlayerKeyListener(playerObj, mapManager, screenFrame));
-		
-		//방향키 추가하기.
-		//총알 발사는 함수로 따로
 	}
+
 }
 
-class GameObject{
-	int posX;
-	int posY;
-	int objSize;
-
-	String image;
+abstract class GameObject{
+	protected int posX;
+	protected int posY;
+	protected int objSize;
+	protected String remove;
+	protected String image;
 	
 	public int getPosX() {
 		return posX;
@@ -82,8 +133,8 @@ class GameObject{
 	public int getObjSize() {
 		return objSize;
 	}
-	public void setObjSize(int objSize) {
-		this.objSize = objSize;
+	private void setObjSize() {
+		objSize = image.length()/2;
 	}
 	
 	public String getImage() {
@@ -93,53 +144,82 @@ class GameObject{
 		this.image = image;
 	}
 
-	GameObject(int posX, int posY){
+	GameObject(int posX, int posY, String image){
 		this.posX = posX;
 		this.posY = posY;
+		this.image = image;
+		setObjSize();
+		setRemove();
+	}
+	
+	public String getRemove() {
+		return remove;
+	}
+	private void setRemove() {
+		StringBuilder sb = new StringBuilder();
+		for(int i = 0; i < getImage().length(); i++) {
+			sb.append(" ");
+		}
+		remove = sb.toString();
 	}
 }
 
 
 class PlayerObject extends GameObject{
-	final String PLAYER_IMAGE = ">-0-<";
-	final int PLAYER_SIZE = 2;
-	final String REMOVE_PLAYER = "     ";
+	private static final String PLAYER_IMAGE = ">-0-<";
 	
 	PlayerObject(int posX, int posY){
-		super(posX, posY);
-		super.setObjSize(PLAYER_SIZE);
-		super.setImage(PLAYER_IMAGE);
+		super(posX, posY, PLAYER_IMAGE);
 	}
 }
 
 class EnemyObject extends GameObject{
-	final String ENEMY_IMAGE = "[XUX]";
-	final int ENEMY_SIZE = 2;
+	private static final String ENEMY_IMAGE = "[XUX]";
 	
 	EnemyObject(int posX, int posY){
-		super(posX, posY);
-		super.setObjSize(ENEMY_SIZE);
-		super.setImage(ENEMY_IMAGE);
+		super(posX, posY, ENEMY_IMAGE);
 	}
 }
 
-class bulletObject extends GameObject{
-	final String BULLET_IMAGE = "!";
-	final int BULLET_SIZE = 0;
+class BulletObject extends GameObject{
+	private static final String BULLET_IMAGE = "!";
+	private MapManager mapManager = MapManager.createManager();
+	private EnemyHandler enemyHandler = EnemyHandler.createEnemyHandler();
 	
-	bulletObject(int posX, int posY){
-		super(posX, posY);
-		super.setObjSize(BULLET_SIZE);
-		super.setImage(BULLET_IMAGE);
+	BulletObject(int posX, int posY){
+		super(posX, posY - 1, BULLET_IMAGE);
+		shoot();
+	}
+	
+	public void shoot() {
+		new Thread(new Runnable() {
+		    public void run() {
+				for(int i = posY; i >= 0; i--) {
+					if(mapManager.map[i][posX] != ' ') {
+						enemyHandler.hitEnemy(posX, i);
+						return;
+					}
+					mapManager.map[i][posX] = BULLET_IMAGE.charAt(0);
+					try {
+						Thread.sleep(30);
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+					mapManager.map[i][posX] = ' ';
+				}
+		    }
+		}).start();
 	}
 }
 
 
 class MapManager{         //맵(char형 2차원 배열)에 관여하는 클래스
 	static MapManager mapManager = null;
+	private int gameScore = 0;
+	private int killScore = 10;
 	
 	char[][] map = new char[MAP_POSITION_INFO.MAX_MAP_Y][MAP_POSITION_INFO.MAX_MAP_X];
-	
+
 	private MapManager(){}
 	public static MapManager createManager () {
 		if (mapManager == null) {
@@ -167,7 +247,7 @@ class MapManager{         //맵(char형 2차원 배열)에 관여하는 클래스
 		}
 		
 		insertScoreboard();
-		insertScore(0);
+		insertScore();
 		insertSign();
 	}
 	
@@ -184,16 +264,16 @@ class MapManager{         //맵(char형 2차원 배열)에 관여하는 클래스
 		}
 	}
 	
-	boolean tryInMap(GameObject gameObj) {         
-		int objX = gameObj.getPosX();			   
-		int objY = gameObj.getPosY();			   
+	boolean tryInMap(GameObject gameObj, int x, int y) {         
+		int objX = gameObj.getPosX() + x;			   
+		int objY = gameObj.getPosY() + y;			   
 		int objSize = gameObj.getObjSize();		  
 		
 		if ( (objX - objSize) < MAP_POSITION_INFO.GAME_SPACE_LEFT+1 || (objX + objSize) > MAP_POSITION_INFO.GAME_SPACE_RIGHT-1)  {
 			return false;
 		}
 		
-		if ( objY < 0 ||  objY > MAP_POSITION_INFO.MAX_MAP_Y) {
+		if ( objY < 0 ||  objY > MAP_POSITION_INFO.MAX_MAP_Y - 1) {
 			return false;
 		}
 		
@@ -225,8 +305,8 @@ class MapManager{         //맵(char형 2차원 배열)에 관여하는 클래스
 		}
 	}
 	
-	void insertScore(int score) {
-		char[] cScore =  Integer.toString(score).toCharArray();
+	void insertScore() {
+		char[] cScore =  Integer.toString(gameScore).toCharArray();
 		for (int i = 0; i < cScore.length; i++) {
 			map[MAP_POSITION_INFO.SCORE_Y][MAP_POSITION_INFO.SCORE_X + i] = cScore[i];
 		}
@@ -243,42 +323,121 @@ class MapManager{         //맵(char형 2차원 배열)에 관여하는 클래스
 	public String getStringRow(int index) {
 		return String.valueOf(map[index]);
 	}
+	
+	public void addScore() {
+		gameScore += killScore;
+		insertScore();
+	}
+	
+	public void resetScore() {
+		int scoreSpace = 5;
+		gameScore = 0;
+				for (int i = 0; i < scoreSpace; i++) {
+			map[MAP_POSITION_INFO.SCORE_Y][MAP_POSITION_INFO.SCORE_X + i] = ' ';
+		}
+	}
+	
+	public void clearMap() {
+		for(int i = 0; i < MAP_POSITION_INFO.MAX_MAP_Y; i++) {
+			for(int j = MAP_POSITION_INFO.GAME_SPACE_LEFT; j < MAP_POSITION_INFO.GAME_SPACE_RIGHT; j++) {
+				map[i][j] = ' ';
+			}
+		}
+	}
 }
 
 class PlayerKeyListener extends KeyAdapter{
-	PlayerObject playerObj =null;
-	MapManager mapManager = null; 
-	ScreenFrame screenFrame = null;
+	private PlayerObject playerObj =null;
+	private MapManager mapManager = null; 
 	
-	PlayerKeyListener(PlayerObject playerObj, MapManager mapManager, ScreenFrame screenFrame){
+	private final Set<Integer> pressed = new TreeSet<Integer>();
+	
+	PlayerKeyListener(PlayerObject playerObj, MapManager mapManager){
 		this.playerObj = playerObj;
 		this.mapManager = mapManager;
-		this.screenFrame = screenFrame;
+		
+		//JPanel panel = (JPanel) screenFrame.getContentPane();
+		
+		//panel.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_LEFT, 0), "topLeft");
+		//panel.getActionMap().put("topLeft", topLeftPressed);
 	}
+	
+	/*
+	Action topLeftPressed = new AbstractAction() {
+		@Override
+		public void actionPerformed(ActionEvent e) {
+			if(mapManager.tryInMap(playerObj,-1,-1)) {
+				playerObj.setPosX(playerObj.getPosX() - 1);
+				playerObj.setPosY(playerObj.getPosY() - 1);
+				System.out.println("top left");
+			}
+		}
+	};*/
+	
 	
 	public void keyPressed (KeyEvent e) {
 		int keyCode = e.getKeyCode();
-		
-		if(keyCode == KeyEvent.VK_LEFT && mapManager.tryInMap(playerObj)) {
-			mapManager.insertObj(playerObj,playerObj.REMOVE_PLAYER);
-			playerObj.setPosX(playerObj.getPosX() - 1);
-			mapManager.insertObj(playerObj,playerObj.PLAYER_IMAGE);
-			screenFrame.printAllMap(mapManager);
-			System.out.println("left");
+		pressed.add(keyCode);
+		mapManager.insertObj(playerObj,playerObj.getRemove());
+		if(pressed.size() > 1) {
+			Integer[] pressedArr = pressed.toArray(new Integer[] {});
+	        if (pressedArr[0] == KeyEvent.VK_LEFT && pressedArr[1] == KeyEvent.VK_UP && mapManager.tryInMap(playerObj,-1,-1)) {
+	        	playerObj.setPosX(playerObj.getPosX() - 1);
+	        	playerObj.setPosY(playerObj.getPosY() - 1);
+	        } else if (pressedArr[0] == KeyEvent.VK_UP && pressedArr[1] == KeyEvent.VK_RIGHT && mapManager.tryInMap(playerObj,+1,-1)) {
+	        	playerObj.setPosX(playerObj.getPosX() + 1);
+	        	playerObj.setPosY(playerObj.getPosY() - 1);
+	        } else if (pressedArr[0] == KeyEvent.VK_RIGHT && pressedArr[1] == KeyEvent.VK_DOWN && mapManager.tryInMap(playerObj,+1,+1)) {
+	        	playerObj.setPosX(playerObj.getPosX() + 1);
+	        	playerObj.setPosY(playerObj.getPosY() + 1);
+	        } else if (pressedArr[0] == KeyEvent.VK_LEFT && pressedArr[1] == KeyEvent.VK_DOWN && mapManager.tryInMap(playerObj,-1,1)) {
+	        	playerObj.setPosX(playerObj.getPosX() - 1);
+	        	playerObj.setPosY(playerObj.getPosY() + 1);
+	        }
 		}
+		else {
+			if(keyCode == KeyEvent.VK_LEFT && mapManager.tryInMap(playerObj,-1,0)) {
+				playerObj.setPosX(playerObj.getPosX() - 1);
+				System.out.println("left");
+			}
+			if(keyCode == KeyEvent.VK_RIGHT && mapManager.tryInMap(playerObj,1,0)) {
+				playerObj.setPosX(playerObj.getPosX() + 1);
+				System.out.println("right");
+			}
+			if(keyCode == KeyEvent.VK_UP && mapManager.tryInMap(playerObj,0,-1)) {
+				playerObj.setPosY(playerObj.getPosY() - 1);
+				System.out.println("up");
+			}
+			if(keyCode == KeyEvent.VK_DOWN && mapManager.tryInMap(playerObj,0,1)) {
+				playerObj.setPosY(playerObj.getPosY() + 1);
+				System.out.println("down");
+			}
+			if(keyCode == KeyEvent.VK_SPACE) {
+				new BulletObject(playerObj.getPosX(),playerObj.getPosY());
+				System.out.println("shot");
+			}
+			if(keyCode == KeyEvent.VK_Y) {
+				if(MainGame.getGameOver()) {
+					
+				}
+			}
+		}
+		mapManager.insertObj(playerObj,playerObj.getImage());
 	}
-	public void keyReleased() {}
+	public void keyReleased(KeyEvent e) {
+		pressed.remove(Integer.valueOf(e.getKeyCode()));
+	}
 }
 
 
 class ScreenFrame extends JFrame{  //JFrame 출력에 관여하는 클래스.
 	JTextArea jTextArea;
 	Font font;
-
+	//JPanel panel;
 	ScreenFrame(){
-		super.setSize(1460,930);
-		super.setTitle("Let's Play Space Invaders");
-		super.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		setSize(1460,930);
+		setTitle("Let's Play Space Invaders");
+		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		
 		jTextArea = new JTextArea(25,85);
 		font = new Font("Consolas",Font.PLAIN,30);
@@ -286,6 +445,8 @@ class ScreenFrame extends JFrame{  //JFrame 출력에 관여하는 클래스.
 		jTextArea.setFont(font);
 		jTextArea.setEnabled(false);
 		jTextArea.setDisabledTextColor(Color.black);
+		
+		//panel = (JPanel) getContentPane();
 	}
 	
 	public void add() {
@@ -293,12 +454,113 @@ class ScreenFrame extends JFrame{  //JFrame 출력에 관여하는 클래스.
 	}
 	
 	public void printAllMap(MapManager mapManager) {
+		StringBuilder sb = new StringBuilder();
 		for(int i = 0; i < MAP_POSITION_INFO.MAX_MAP_Y; i++) {
-			jTextArea.append(mapManager.getStringRow(i));
+			sb.append(mapManager.getStringRow(i));
 		}
-		
+		jTextArea.setText(sb.toString());
 		add();
 		this.setVisible(true);
+	}
+	/*
+	public JPanel getPanel() {
+		return panel;
+	}*/
+}
+
+
+class EnemyHandler{
+	ArrayList<EnemyObject> enemies = new ArrayList<EnemyObject>();
+	MapManager mapManager = MapManager.mapManager;
+	static EnemyHandler enemyHandler = null;
+	final int ENEMY_MOVE_X = 8;
+	final int ENEMY_MOVE_Y = 1;
+	final int ENEMY_SPEED = 500;
+	
+	private EnemyHandler(){}
+	public static EnemyHandler createEnemyHandler () {
+		if (enemyHandler == null) {
+			enemyHandler = new EnemyHandler();
+		}
+		
+		return enemyHandler;
+	}
+	
+	
+	public void addEnemy(EnemyObject enemy) {
+		enemies.add(enemy);
+		mapManager.insertObj(enemy,enemy.getImage());
+	}
+	
+	public void moveAllEnemies() {
+		new Thread(new Runnable() {
+		    public void run() {
+		    	while(!MainGame.getGameOver()) {
+			    	moveAllX(1);
+			    	moveAllY(1);
+			    	moveAllX(-1);
+			    	moveAllY(1);
+		    	}
+		    }
+		}).start(); 
+
+	}
+	
+	private void moveAllX(int direction) {
+		for(int i = 0; i <ENEMY_MOVE_X; i++) {
+			for(int j = 0; j < enemies.size(); j++) {
+				EnemyObject enemy = enemies.get(j);
+				mapManager.insertObj(enemy, enemy.getRemove());
+				enemy.setPosX(enemy.getPosX() + direction);
+				mapManager.insertObj(enemy, enemy.getImage());
+			}
+			try {
+				Thread.sleep(ENEMY_SPEED);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
+	}
+	
+	private void moveAllY(int direction) {
+		for(int i = 0; i <ENEMY_MOVE_Y; i++) {
+			for(int j = 0; j < enemies.size(); j++) {
+				EnemyObject enemy = enemies.get(j);
+				mapManager.insertObj(enemy, enemy.getRemove());
+				enemy.setPosY(enemy.getPosY() + direction);
+				mapManager.insertObj(enemy, enemy.getImage());
+			}
+			try {
+				Thread.sleep(ENEMY_SPEED);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
+	}
+	
+	public void hitEnemy(int x, int y) {
+		EnemyObject enemy;
+		for(int i = 0; i < enemies.size(); i++) {
+			enemy = enemies.get(i);
+			if(enemy.getPosY() == y) {
+				if((enemy.getPosX() - enemy.getObjSize()) <= x && (enemy.getPosX() + enemy.getObjSize()) >= x) {
+					mapManager.insertObj(enemy, enemy.getRemove());
+					mapManager.addScore();
+					enemies.remove(i);
+					System.out.println("Hit");
+					if(checkGameOver()) {
+						MainGame.setGameOver();
+					}
+				}
+			}
+		}
+	}
+	
+	public boolean checkGameOver() {
+		if(enemies.isEmpty()) {
+			return true;
+		}
+		return false;
 	}
 }
 
